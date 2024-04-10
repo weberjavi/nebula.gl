@@ -1,4 +1,4 @@
-import { Vector2 } from 'math.gl';
+import { Vector2 } from '@math.gl/core';
 
 function getLineLength(vPoints) {
   // calculate total length
@@ -11,7 +11,35 @@ function getLineLength(vPoints) {
 
 const DEFAULT_COLOR = [0, 0, 0, 255];
 const DEFAULT_DIRECTION = { forward: true, backward: false };
+function createMarkerAlongPath({ path, percentage, lineLength, color, object, projectFlat }) {
+  const distanceAlong = lineLength * percentage;
+  let currentDistance = 0;
+  let previousDistance = 0;
+  let i = 0;
+  for (i = 0; i < path.length - 1; i++) {
+    currentDistance += path[i].distance(path[i + 1]);
+    if (currentDistance > distanceAlong) {
+      break;
+    }
+    previousDistance = currentDistance;
+  }
 
+  // If reached the end of the loop without exiting early,
+  // undo the final increment to avoid a null-pointer exception
+  if (i === path.length - 1) {
+    i -= 1;
+  }
+
+  const vDirection = path[i + 1].clone().subtract(path[i]).normalize();
+  const along = distanceAlong - previousDistance;
+  const vCenter = vDirection.clone().multiply(new Vector2(along, along)).add(path[i]);
+
+  const vDirection2 = new Vector2(projectFlat(path[i + 1])).subtract(projectFlat(path[i]));
+
+  const angle = (vDirection2.verticalAngle() * 180) / Math.PI;
+
+  return { position: [vCenter.x, vCenter.y, 0], angle, color, object };
+}
 export default function createPathMarkers({
   data,
   getPath = (x, context) => x.path,
@@ -65,34 +93,4 @@ export default function createPathMarkers({
   }
 
   return markers;
-}
-
-function createMarkerAlongPath({ path, percentage, lineLength, color, object, projectFlat }) {
-  const distanceAlong = lineLength * percentage;
-  let currentDistance = 0;
-  let previousDistance = 0;
-  let i = 0;
-  for (i = 0; i < path.length - 1; i++) {
-    currentDistance += path[i].distance(path[i + 1]);
-    if (currentDistance > distanceAlong) {
-      break;
-    }
-    previousDistance = currentDistance;
-  }
-
-  // If reached the end of the loop without exiting early,
-  // undo the final increment to avoid a null-pointer exception
-  if (i === path.length - 1) {
-    i -= 1;
-  }
-
-  const vDirection = path[i + 1].clone().subtract(path[i]).normalize();
-  const along = distanceAlong - previousDistance;
-  const vCenter = vDirection.clone().multiply(new Vector2(along, along)).add(path[i]);
-
-  const vDirection2 = new Vector2(projectFlat(path[i + 1])).subtract(projectFlat(path[i]));
-
-  const angle = (vDirection2.verticalAngle() * 180) / Math.PI;
-
-  return { position: [vCenter.x, vCenter.y, 0], angle, color, object };
 }
